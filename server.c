@@ -6,18 +6,21 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <pthread.h>
 
-#define taille 150
-/*taille choisit abritrairement ici*/
-
+#define taille 256 /*taille choisie abritrairement ici*/
 #define port 10400
 #define id1 0
 #define id2 1
 
+int cl1;
+int cl2;
+int s;
+char message[taille];
+
 int end(char* message){
-  int fin=strncmp("fin", message,3);
+  int fin=strcmp("fin", message);
   if (fin==0){
-    printf("/////// Fin du tchat /////// \n");
     return 1;
   } else {
     return 0;
@@ -25,13 +28,60 @@ int end(char* message){
 
 }
 
+void *C1ToC2() {
+
+  int end_tchat=0;
+  while(!end_tchat){
+
+    bzero(message, taille);
+
+    int r = recv(cl1,message,taille,0);
+    if (r < 0){
+      perror("Erreur reception client 1");
+    }
+    r = send(cl2,message,strlen(message),0);
+    if (r < 0){
+      perror("Erreur envoi client 2");
+    }
+
+    //si fin du tchat
+
+    if(end(message)){
+      end_tchat=1;
+    }
+  }
+
+}
+
+
+
+void *C2ToC1() {
+
+  int end_tchat=0;
+  while(!end_tchat){
+
+    bzero(message, taille);
+
+    int s = recv(cl2,message,taille,0);
+    if (s < 0){
+      perror("Erreur reception client 2");
+    }
+    s = send(cl1,message,strlen(message),0);
+    if (s < 0){
+      perror("Erreur envoi client 1");
+    }
+
+    //si fin du tchat
+
+    if(end(message)){
+      end_tchat=1;
+    }
+  }
+}
+
+
 int main(){
-  int end_tchat;
-  char message[taille];
-  int cl1;
-  int cl2;
-  int idclient;
-  
+
   /*creation socket*/
 
 	int dS = socket(PF_INET, SOCK_STREAM , 0);  /* creation socket, IPv4, protocole TCP */
@@ -56,7 +106,6 @@ int main(){
   socklen_t lg = sizeof(struct sockaddr_in) ;
 
   while(1){
-    end_tchat=0;
 
     /*connexion client 1*/
     cl1 = accept(dS, (struct sockaddr*) &aC,&lg);
@@ -65,7 +114,7 @@ int main(){
     }
     printf("Client 1 connecte \n");
     sprintf(message, "Bienvenue client 1 ! \n");
-    int s = send(cl1, message, taille, 0);
+    s = send(cl1, message, taille, 0);
     if (s<0){
       perror("Erreur de transmission \n");
     }
@@ -83,56 +132,30 @@ int main(){
       perror("Erreur de transmission \n");
     }
 
-    /*debut tchat*/
-
     sprintf(message,"> Client 2 connecte, debut du tchat \n");
-    send(cl1, message, taille, 0); 
+    send(cl1, message, taille, 0);
 
-    idclient=0;    
-    while(!end_tchat){
-      bzero(message, taille);
-      if (idclient==0){
-        int r = recv(cl1,message,taille,0);
-        if (r < 0){
-          perror("Erreur reception client 1");
-        }
-        r = send(cl2,message,strlen(message),0);
-        if (r < 0){
-          perror("Erreur envoi client 2");
-        }
-        idclient=id2;
-      } else {
-        int s = recv(cl2,message,taille,0);
-        if (s < 0){
-          perror("Erreur reception client 2");
-        }
-        s = send(cl1,message,strlen(message),0);
-        if (s < 0){
-          perror("Erreur envoi client 1");
-        }
-        idclient=id1;        
-      }
+    // Debut du tchat avec les threads
+    pthread_t tC1ToC2;
+    pthread_t tC2ToC1;
 
-      /*si fin du tchat*/
+    pthread_create(&tC1ToC2,0,C1ToC2,0);
+    pthread_create(&tC2ToC1,0,C2ToC1,0);
 
-      if(end(message)){
-        int c = close(cl1);
-        if (c != 0){
-          perror("Erreur fermeture cl1");
-        }
-        c = close(cl2);
-        if (c != 0){
-          perror("Erreur fermeture cl2");
-        }
-        end_tchat=1;
-      }
-      
-    }
+    pthread_join(tC1ToC2,0);
+    pthread_join(tC2ToC1,0);
+
+    //fermeture socket client
+    printf("/////// Fin du tchat /////// \n");
+    close(cl1);
+    close(cl2);
+
+    // Tchat termine, recommence une boucle pour trouver des clients
+
     printf("En attente de connexion \n");
-    
-    
+
   }
-  
+
   int c = close (dS);
   if (c != 0){
     perror("Erreur fermeture socket");
