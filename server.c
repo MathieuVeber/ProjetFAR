@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <pthread.h>
+#include "struct.h"
 
 #define taille 256 /*taille choisie abritrairement ici*/
 #define port 10400
@@ -18,7 +19,7 @@ int cl2;
 int s;
 char message[taille];
 
-int end(char* message){
+/*int end(char* message){
   int fin=strcmp("fin", message);
   if (fin==0){
     return 1;
@@ -26,28 +27,42 @@ int end(char* message){
     return 0;
   }
 
-}
+}*/
 
 void *C1ToC2() {
 
   int end_tchat=0;
-  while(!end_tchat){
+  struct message the_message; 
+  while(1){
 
-    bzero(message, taille);
+    if(!end_tchat){
+      //on receptionne le mssg du client 2
+      int r = recv(cl2,&the_message,sizeof(the_message)+1,0); 
+      if (r < 0){
+        perror("Erreur reception client 1");
+      }
 
-    int r = recv(cl1,message,taille,0);
-    if (r < 0){
-      perror("Erreur reception client 1");
+      //on va le renvoyer au client 1
+      struct message msg_send;
+      msg_send.etiquette = the_message.etiquette;
+      if (strcmp(the_message.contenu, "file\n")==0){
+        msg_send.etiquette=1;
+      }
+    
+      r = send(cl1,&msg_send,sizeof(msg_send)+1,0);
+      if (r < 0){
+        perror("Erreur envoi client 2");
+      }
+
+      if (strcmp(the_message,"fin\n")==0){
+        end_tchat=1
+        printf("client 1 a fermé le tchat");
+      }
     }
-    r = send(cl2,message,strlen(message),0);
-    if (r < 0){
-      perror("Erreur envoi client 2");
-    }
-
+    
     //si fin du tchat
-
-    if(end(message)){
-      end_tchat=1;
+    else{
+      break;
     }
   }
 
@@ -58,23 +73,37 @@ void *C1ToC2() {
 void *C2ToC1() {
 
   int end_tchat=0;
-  while(!end_tchat){
+  struct message the_message; 
+  while(1){
 
-    bzero(message, taille);
+    if(!end_tchat){
+      //on receptionne le mssg du client 1
+      int r = recv(cl1,&the_message,sizeof(the_message)+1,0); 
+      if (r < 0){
+        perror("Erreur reception client 1");
+      }
 
-    int s = recv(cl2,message,taille,0);
-    if (s < 0){
-      perror("Erreur reception client 2");
+      //on va le renvoyer au client 2
+      struct message msg_send;
+      msg_send.etiquette = the_message.etiquette;
+      if (strcmp(the_message.contenu, "file\n")==0){
+        msg_send.etiquette=1;
+      }
+    
+      r = send(cl2,&msg_send,sizeof(msg_send)+1,0);
+      if (r < 0){
+        perror("Erreur envoi client 2");
+      }
+
+      if (strcmp(the_message,"fin\n")==0){
+        end_tchat=1
+        printf("client 1 a fermé le tchat");
+      }
     }
-    s = send(cl1,message,strlen(message),0);
-    if (s < 0){
-      perror("Erreur envoi client 1");
-    }
-
+    
     //si fin du tchat
-
-    if(end(message)){
-      end_tchat=1;
+    else{
+      break;
     }
   }
 }
@@ -118,6 +147,9 @@ int main(){
     if (s<0){
       perror("Erreur de transmission \n");
     }
+
+    sprintf(port, inet_ntoa(aC.sin_addr));
+    port=(int)ntohs(adCv.sin_port);
 
     /*conexion client 2*/
 
