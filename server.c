@@ -143,7 +143,7 @@ int main(){
     }
     printf("Client 1 connecte \n");
     sprintf(msg.contenu, "Bienvenue client 1 ! \n");
-    s = send(cl1,msg, sizeof(msg)+1, 0);
+    s = send(cl1,&msg, sizeof(msg)+1, 0);
     if (s<0){
       perror("Erreur de transmission \n");
     }
@@ -154,15 +154,22 @@ int main(){
     if (cl2 < 0){
       perror("Erreur, client 1 non accepte");
     }
+    
     printf("Client 2 connecté \n");
-    sprintf(message.contenu, "Bienvenue client 2 ! \n");
-    s=send(cl2, msg, sizeof(msg)+1, 0);
+    
+    sprintf(msg.contenu, "Bienvenue client 2 ! \n");
+    s=send(cl2,&msg, sizeof(msg)+1, 0);
     if (s<0){
       perror("Erreur de transmission \n");
     }
-
-    sprintf(msg.contneu,"> Client 2 connecte, debut du tchat \n");
-    send(cl1, msg, sizeof(msg)+1, 0);
+    
+    printf("ok");
+    
+    sprintf(msg.contenu,"> Client 2 connecte, debut du tchat \n");
+    s=send(cl1,&msg, sizeof(msg)+1, 0);
+    if (s<0){
+      printf("Erreur de transmission \n");
+    }
 
     // Debut du tchat avec les threads
     pthread_t tC1ToC2;

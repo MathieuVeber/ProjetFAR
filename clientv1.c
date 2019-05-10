@@ -146,7 +146,9 @@ void *sendMessage() {
     // Si envoie du fichier
     if(strcmp("file\0", sender.contenu)==0){
       pthread_t tSendFile;
-      check=send(dS,sender.contenu,sizeof(sender)+1,0);
+      
+      check=send(dS,&sender,sizeof(sender)+1,0);
+      printf("lol1");
       if (check<0) {
       printf("erreur d'envoi\n");
       }
@@ -155,7 +157,7 @@ void *sendMessage() {
     }
     else {
       sender.etiquette=0; //message classique
-      check=send(dS,sender.contenu,sizeof(sender)+1,0);
+      check=send(dS,&sender,sizeof(sender)+1,0);
       if (check<0) {
       printf("erreur d'envoi\n");
       }
@@ -186,6 +188,7 @@ void *receivMessage() {
 
     if (receiv.etiquette=0){
       check = recv(dS,&receiv,sizeof(receiv)+1,0);
+      printf("lol");
       if (check<0) {
       printf("erreur de reception \n");
       }
