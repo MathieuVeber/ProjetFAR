@@ -13,6 +13,7 @@
 #define id1 0
 #define id2 1
 
+
 int cl1;
 int cl2;
 int s;
@@ -27,6 +28,104 @@ int end(char* message){
   }
 
 }
+
+void TransfertFichier(int client1, int client2){
+      int res;		
+      int tailleNom;
+			int tailleContenu;
+			char nomFichier[taille];
+			char contenuFichier[taille];
+			printf("Prêt à recevoir un ficher...\n");
+
+			res = recv(client1, &tailleNom, sizeof(int),0); /* Réception de la taille du nom du fichier */
+
+			if(res < 0){
+				perror("Problème lors de la réception de la taille du nom du fichier");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermé");
+				exit(1);
+			}
+
+			res = recv(client1, &nomFichier, tailleNom,0); /* Réception du nom du fichier */
+
+			if(res < 0){
+				perror("Problème lors de la réception du nom du fichier");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermé");
+				exit(1);
+			}
+
+			nomFichier[tailleNom] = '\0';
+
+			printf("Nom du fichier : %s\n", nomFichier); /* Affichage du nom du fichier */
+
+			res = send(client2, &tailleNom, sizeof(int),0);
+
+			if(res < 0){
+				perror("Problème lors de l'envoie de la taille du nom du fichier au client2");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermé");
+				exit(1);
+			}
+
+			res = send(client2, &nomFichier, tailleNom,0);
+
+			if(res < 0){
+				perror("Problème lors de l'envoie du nom du fichier au client2");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermé");
+				exit(1);
+			}
+
+			res = recv(client1, &tailleContenu, sizeof(int),0); /* Réception de la taille du contenu du fichier */
+
+			if(res < 0){
+				perror("Problème lors de la réception de la taille du contenu du fichier");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermé");
+				exit(1);
+			}
+
+			res = recv(client1, &contenuFichier, tailleContenu,0); /* Réception du contenu du fichier */
+
+			if(res < 0){
+				perror("Problème lors de la réception du contenu du fichier");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermé");
+				exit(1);
+			}
+
+			contenuFichier[tailleContenu] = '\0';
+
+			printf("Contenu du fichier : %s\n", contenuFichier); /* Affichage du nom du fichier */
+
+			res = send(client2, &tailleContenu, sizeof(int),0);
+
+			if(res < 0){
+				perror("Problème lors de l'envoie de la taille du contenu du fichier au client2");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermé");
+				exit(1);
+			}
+
+			res = send(client2, &contenuFichier, tailleContenu,0);
+
+			if(res < 0){
+				perror("Problème lors de l'envoie du contenu du fichier au client2");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermé");
+				exit(1);
+			}
+}
+
 
 void *C1ToC2() {
 
@@ -48,6 +147,9 @@ void *C1ToC2() {
 
     if(end(message)){
       end_tchat=1;
+    }
+    if(strcmp(message, "file")== 0){
+       TransfertFichier(cl1, cl2);
     }
   }
 
@@ -75,6 +177,9 @@ void *C2ToC1() {
 
     if(end(message)){
       end_tchat=1;
+    }
+    if(strcmp(message, "file")== 0){
+       TransfertFichier(cl2, cl1);
     }
   }
 }

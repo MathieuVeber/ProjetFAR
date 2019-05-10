@@ -8,6 +8,10 @@
 #include <string.h>
 #include <pthread.h>
 #include <signal.h>
+#include <dirent.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define taille 256 /*taille choisit abritrairement*/
 #define port 10400
@@ -40,6 +44,75 @@ void *receivMessage() {
       kill(getpid(),SIGUSR1);
       break;
     }
+    if(strcmp(receiv, "file") == 0){
+			    int tailleNom;
+			    int tailleContenu;
+			    char nomFichier[taille];
+			    char contenuFichier[taille];
+			    char* res2;
+			    printf("Prêt à recevoir un ficher...\n");
+
+			    res = recv(dS, &tailleNom, sizeof(int),0); /* Réception de la taille du nom du fichier */
+
+			    if(res < 0){
+				    perror("Problème lors de la réception de la taille du nom du fichier");
+				    exit(1);
+			    } else if(res == 0){
+				    perror("Socket fermé");
+				    exit(0);
+			    }
+
+			    res = recv(dS, &nomFichier, tailleNom,0); /* Réception du nom du fichier */
+
+			    if(res < 0){
+				    perror("Problème lors de la réception du nom du fichier");
+				    exit(1);
+			    } else if(res == 0){
+				    perror("Socket fermé");
+				    exit(0);
+			    }
+
+			    printf("Nom du fichier : %s\n", nomFichier); /* Affichage du nom du fichier */
+
+			    res = recv(dS, &tailleContenu, sizeof(int),0); /* Réception de la taille du contenu du fichier */
+
+			    if(res < 0){
+				    perror("Problème lors de la réception de la taille du contenu du fichier");
+				    exit(1);
+			    } else if(res == 0){
+				    perror("Socket fermé");
+				    exit(1);
+			    }
+
+			    res = recv(dS, &contenuFichier, tailleContenu,0); /* Réception du contenu du fichier */
+
+			    if(res < 0){
+				    perror("Problème lors de la réception du contenu du fichier");
+				    exit(1);
+			    } else if(res == 0){
+				    perror("Socket fermé");
+				    exit(1);
+			    }
+
+			    contenuFichier[tailleContenu] = '\0';
+
+			    printf("Contenu du fichier : %s\n", contenuFichier); /* Affichage du nom du fichier */
+
+			    FILE* newFile = NULL;
+
+        		newFile = fopen(nomFichier, "a+");
+
+			    if (newFile != NULL){
+				    res2 = fputs(contenuFichier, newFile);
+				    if(res2 == EOF){
+					    perror("Erreur lors de l'écriture dans le fichier");
+				    }
+				    fclose(newFile);
+			    } else {
+				    perror("Erreur lors de la création/ouverture du fichier");
+			    }
+
+    }
   }
 }
 
@@ -60,6 +133,81 @@ void *sendMessage() {
       free(sender);
       kill(getpid(),SIGUSR1);
       break;
+    }
+	  if(strcmp(sender, "file") == 0){
+		  char chaine [taille]="";
+		  char copie [taille] = {0};
+		  char nomFichier [15];
+		  int tailleNom;
+		  int tailleContenu;
+
+		  DIR * rep = opendir (".");
+		  if (rep != NULL){
+			  struct dirent * ent;
+			  while ((ent = readdir (rep)) != NULL){
+				  printf ("%s\n", ent->d_name);
+			  }
+			  closedir (rep);
+		  } else {
+			perror ("le dossier est vide ou n'existe pas\n");
+		}
+		printf("Quel fichier voulez vous envoyer ? \n");
+		fgets(nomFichier, taille, stdin);
+		*strchr(nomFichier, '\n') = '\0';
+
+			tailleNom = strlen(nomFichier);
+			res = send(dS,&tailleNom,sizeof(int),0); /* Envoie de la taille du nom du fichier */
+
+			if (res<0){
+				perror("Taille du nom du fichier non envoyé");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermée");
+				exit(0);
+			}
+
+			res = send(dS,&nomFichier,tailleNom,0); /* Envoie du nom du fichier */
+
+			if (res<0){
+				perror("Nom du fichier non envoyé");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermée");
+				exit(0);
+			}
+
+			FILE* file = NULL;
+			file = fopen(nomFichier, "r");
+
+			while (fgets(chaine, taille, file) != NULL){
+				printf("Données copiées : %s\n",chaine);
+				strcat(copie, chaine);  /* pour pouvoir concaténer toutes les lignes du fichier */
+			}
+
+			fclose(file);
+			
+			tailleContenu = strlen(chaine);
+			
+			res = send(dS,&tailleContenu,sizeof(int),0); /* Envoie de la taille du contenu du fichier */
+
+			if (res<0){
+				perror("Taille du contenu du fichier non envoyé");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermée");
+				exit(0);
+			}
+
+			res = send(dS,&chaine,strlen(chaine),0); /* Envoie du contenu du fichier */
+
+			if(res<0){
+				perror("Contenu du fichier non envoyé");
+				exit(1);
+			} else if(res == 0){
+				perror("Socket fermée");
+				exit(0);
+			}
+			
     }
   }
 }
