@@ -65,7 +65,7 @@ int get_last_tty() {
   return i;
 }
 
-/*void *sendFile(){
+void *sendFile(){
   FILE *fp1=new_tty();
   fprintf(fp1, "%s\n","Ce terminal sera utilisé uniquement pour l'affichage");
 
@@ -120,9 +120,9 @@ int get_last_tty() {
   printf("fichier envoyé");
   }
   fclose(fps);    
-}*/
+}
 
-/*void *receivFile(){
+void *receivFile(){
   FILE *fp2;
   while(1){
     check=recv(dS,&the_file,sizeof(the_file)+1,0);
@@ -131,7 +131,7 @@ int get_last_tty() {
       break;
     }
   }
-}*/
+}
 
 void *sendMessage() {
 
