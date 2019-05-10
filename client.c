@@ -20,12 +20,12 @@
 #define taille 256 /*taille choisit abritrairement*/
 #define port 10400
 
-int dS; // en tant que client avec le serveur
+int dS; /* en tant que client avec le serveur*/
 int dS2; // en tant que serveur avec le client
 int dS3; // en tant que client avec le client
 int res;
 int cl;
-int res3;
+int res2;
 
 
 
@@ -47,7 +47,7 @@ void *receivFile(void *arg) {
   adServ2.sin_family = AF_INET;
   adServ2.sin_port = htons(arg[1]);  /* fait reference au port passe en parametre*/
 
-  res2 = inet_pton(AF_INET, argv[0], &(adServ2.sin_addr)); //creation client et verification
+  res2 = inet_pton(AF_INET, arg[0], &(adServ2.sin_addr)); //creation client et verification
   if (res2 == -1) {
     printf("/////// error creating client /////// \n");
   } else {

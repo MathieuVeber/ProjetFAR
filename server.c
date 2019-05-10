@@ -17,7 +17,7 @@
 int cl1;
 int cl2;
 int s;
-char message[taille];
+struct message msg;
 
 /*int end(char* message){
   int fin=strcmp("fin", message);
@@ -54,8 +54,8 @@ void *C1ToC2() {
         perror("Erreur envoi client 2");
       }
 
-      if (strcmp(the_message,"fin\n")==0){
-        end_tchat=1
+      if (strcmp(the_message.contenu,"fin\n")==0){
+        end_tchat=1;
         printf("client 1 a fermé le tchat");
       }
     }
@@ -95,9 +95,9 @@ void *C2ToC1() {
         perror("Erreur envoi client 2");
       }
 
-      if (strcmp(the_message,"fin\n")==0){
-        end_tchat=1
-        printf("client 1 a fermé le tchat");
+      if (strcmp(the_message.contenu,"fin\n")==0){
+        end_tchat=1;
+        printf("client 2 a fermé le tchat");
       }
     }
     
@@ -142,14 +142,11 @@ int main(){
       perror("Erreur, client 1 non accepte");
     }
     printf("Client 1 connecte \n");
-    sprintf(message, "Bienvenue client 1 ! \n");
-    s = send(cl1, message, taille, 0);
+    sprintf(msg.contenu, "Bienvenue client 1 ! \n");
+    s = send(cl1,msg, sizeof(msg)+1, 0);
     if (s<0){
       perror("Erreur de transmission \n");
     }
-
-    sprintf(port, inet_ntoa(aC.sin_addr));
-    port=(int)ntohs(adCv.sin_port);
 
     /*conexion client 2*/
 
@@ -158,14 +155,14 @@ int main(){
       perror("Erreur, client 1 non accepte");
     }
     printf("Client 2 connecté \n");
-    sprintf(message, "Bienvenue client 2 ! \n");
-    s=send(cl2, message, taille, 0);
+    sprintf(message.contenu, "Bienvenue client 2 ! \n");
+    s=send(cl2, msg, sizeof(msg)+1, 0);
     if (s<0){
       perror("Erreur de transmission \n");
     }
 
-    sprintf(message,"> Client 2 connecte, debut du tchat \n");
-    send(cl1, message, taille, 0);
+    sprintf(msg.contneu,"> Client 2 connecte, debut du tchat \n");
+    send(cl1, msg, sizeof(msg)+1, 0);
 
     // Debut du tchat avec les threads
     pthread_t tC1ToC2;
