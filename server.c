@@ -21,7 +21,8 @@ char message[taille];
 char *listSaloon[]={
 	"1 : projetWeb",
 	"2 : PLS",
-	"3 : pinou"
+	"3 : pinou",
+	"4 : deconnexion"
 };
 int port=20400;
 int NumSaloon[3]={0,0,0};
@@ -37,7 +38,7 @@ int end(char* message){
 }
 
 void TransfertFichier(int client1, int client2){
-      int res;		
+      int res;
       int tailleNom;
 			int tailleContenu;
 			char nomFichier[taille];
@@ -268,10 +269,6 @@ void *salon(){
 
   }
 
-  int c = close (dS);
-  if (c != 0){
-    perror("Erreur fermeture socket");
-  }
 }
 
 int main(int argc, char const *argv[])
@@ -313,6 +310,17 @@ int main(int argc, char const *argv[])
 	      perror("Erreur de transmission \n");
 	    }
 
+			// Nouveau client ou nom de l'ancien salon
+			res = recv(dS,receiv,taille,0);
+	    if (res<0) {
+	      printf("Erreur reception client \n");
+	    }
+	    printf("Le client quitte le salon %s\n",receiv);
+	    int new=strcmp("new\0", receiv);
+	    if (new!=0){
+				NumSaloon[atoi(receiv)+1]-=1;
+	    }
+
 	    //envoi liste salon
 	    s=send(cl,listSaloon,sizeof(listSaloon)+1,0);
 	    if (s<0){
@@ -343,9 +351,14 @@ int main(int argc, char const *argv[])
 	    		bzero(message,taille);
 	    		sprintf(message,"%d",port);
 	    		send(cl,&message,taille,0);
-	       	}	
+	       	}
 	    }
 
+	}
+
+	int c = close (dS);
+	if (c != 0){
+		perror("Erreur fermeture socket");
 	}
 
 	return 0;
