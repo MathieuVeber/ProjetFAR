@@ -322,37 +322,55 @@ int main(int argc, char const *argv[])
 	    }
 
 	    //envoi liste salon
+
+			// <!> Envoi du nombre de clients present dans chaque salon
 	    s=send(cl,listSaloon,sizeof(listSaloon)+1,0);
 	    if (s<0){
 	      perror("Erreur de transmission \n");
 	    }
 
-	    //reception du choix
-	    bzero(message,taille);
-	    s=recv(cl,message,taille,0);
-	    if (s < 0){
-	      perror("Erreur reception client 2");
-	    }
+			while (1) {
+				//reception du choix
+		    bzero(message,taille);
+		    s=recv(cl,message,taille,0);
+		    if (s < 0){
+		      perror("Erreur reception client 2");
+		    }
 
-	    if(atoi(message)>0 && atoi(message)<4){
-	    	port+=(atoi(message));
-	    	if (NumSaloon[atoi(message)+1]==0){
-	    		NumSaloon[atoi(message)+1]+=1;
-	    		bzero(message,taille);
-	    		sprintf(message,"%d",port);
-	    		send(cl,&message,taille,0);
-	    		pthread_t saloon;
-	    		pthread_create(&saloon,0,saloon,port);
-	    		pthread_join(saloon,0);
-	    	}
-	    	else if (NumSaloon[atoi(message)+1]==1)
-	    	{
-	    		NumSaloon[atoi(message)+1]+=1;
-	    		bzero(message,taille);
-	    		sprintf(message,"%d",port);
-	    		send(cl,&message,taille,0);
-	       	}
-	    }
+		    if(atoi(message)>0 && atoi(message)<4){
+		    	port+=(atoi(message));
+		    	if (NumSaloon[atoi(message)+1]==0){
+		    		NumSaloon[atoi(message)+1]+=1;
+		    		bzero(message,taille);
+		    		sprintf(message,"%d",port);
+		    		send(cl,&message,taille,0);
+		    		pthread_t saloon;
+		    		pthread_create(&saloon,0,saloon,port);
+		    		pthread_join(saloon,0);
+						break;
+		    	}
+		    	else if (NumSaloon[atoi(message)+1]==1)
+		    	{
+		    		NumSaloon[atoi(message)+1]+=1;
+		    		bzero(message,taille);
+		    		sprintf(message,"%d",port);
+		    		send(cl,&message,taille,0);
+						break;
+		      }
+					else {
+						bzero(message,taille);
+		    		sprintf(message,"Salon complet");
+						s=send(cl,message,sizeof(message)+1,0);
+						if (s<0){
+							perror("Erreur de transmission \n");
+						}
+					}
+		    }
+				else {
+					close(cl);
+					break;
+				}
+			}
 
 	}
 
