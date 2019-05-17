@@ -24,7 +24,7 @@ char *listSaloon[]={
 	"3 : pinou"
 };
 int port=20400;
-int index[2]={0,0,0};
+int NumSaloon[3]={0,0,0};
 
 int end(char* message){
   int fin=strcmp("fin", message);
@@ -328,18 +328,18 @@ int main(int argc, char const *argv[])
 
 	    if(atoi(message)>0 && atoi(message)<4){
 	    	port+=(atoi(message));
-	    	if (index[atoi(message)+1]==0){
-	    		index[atoi(message)+1]+=1;
+	    	if (NumSaloon[atoi(message)+1]==0){
+	    		NumSaloon[atoi(message)+1]+=1;
 	    		bzero(message,taille);
 	    		sprintf(message,"%d",port);
 	    		send(cl,&message,taille,0);
 	    		pthread_t saloon;
-	    		pthread_create(&saloon,0,saloon,*port);
+	    		pthread_create(&saloon,0,saloon,port);
 	    		pthread_join(saloon,0);
 	    	}
-	    	else if (index[atoi(message)+1]==1)
+	    	else if (NumSaloon[atoi(message)+1]==1)
 	    	{
-	    		index[atoi(message)+1]+=1;
+	    		NumSaloon[atoi(message)+1]+=1;
 	    		bzero(message,taille);
 	    		sprintf(message,"%d",port);
 	    		send(cl,&message,taille,0);
