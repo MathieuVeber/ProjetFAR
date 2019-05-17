@@ -9,15 +9,22 @@
 #include <pthread.h>
 
 #define taille 256 /*taille choisie abritrairement ici*/
-#define port 10400
+#define portServer 10400
 #define id1 0
 #define id2 1
 
-
+int cl;
 int cl1;
 int cl2;
 int s;
 char message[taille];
+char *listSaloon[]={
+	"1 : projetWeb",
+	"2 : PLS",
+	"3 : pinou"
+};
+int port=20400;
+int index[2]={0,0,0};
 
 int end(char* message){
   int fin=strcmp("fin", message);
@@ -43,7 +50,7 @@ void TransfertFichier(int client1, int client2){
 				perror("Problème lors de la réception de la taille du nom du fichier");
 				exit(1);
 			} else if(res == 0){
-				perror("Socket fermé");
+				perror("soket fermée");
 				exit(1);
 			}
 
@@ -53,7 +60,7 @@ void TransfertFichier(int client1, int client2){
 				perror("Problème lors de la réception du nom du fichier");
 				exit(1);
 			} else if(res == 0){
-				perror("Socket fermé");
+				perror("soket fermée");
 				exit(1);
 			}
 
@@ -64,20 +71,20 @@ void TransfertFichier(int client1, int client2){
 			res = send(client2, &tailleNom, sizeof(int),0);
 
 			if(res < 0){
-				perror("Problème lors de l'envoie de la taille du nom du fichier au client2");
+				perror("Problème lors de l'envoi de la taille du nom du fichier au client2");
 				exit(1);
 			} else if(res == 0){
-				perror("Socket fermé");
+				perror("soket fermée");
 				exit(1);
 			}
 
 			res = send(client2, &nomFichier, tailleNom,0);
 
 			if(res < 0){
-				perror("Problème lors de l'envoie du nom du fichier au client2");
+				perror("Problème lors de l'envoi du nom du fichier au client2");
 				exit(1);
 			} else if(res == 0){
-				perror("Socket fermé");
+				perror("soket fermée");
 				exit(1);
 			}
 
@@ -87,7 +94,7 @@ void TransfertFichier(int client1, int client2){
 				perror("Problème lors de la réception de la taille du contenu du fichier");
 				exit(1);
 			} else if(res == 0){
-				perror("Socket fermé");
+				perror("soket fermée");
 				exit(1);
 			}
 
@@ -97,7 +104,7 @@ void TransfertFichier(int client1, int client2){
 				perror("Problème lors de la réception du contenu du fichier");
 				exit(1);
 			} else if(res == 0){
-				perror("Socket fermé");
+				perror("soket fermée");
 				exit(1);
 			}
 
@@ -108,20 +115,20 @@ void TransfertFichier(int client1, int client2){
 			res = send(client2, &tailleContenu, sizeof(int),0);
 
 			if(res < 0){
-				perror("Problème lors de l'envoie de la taille du contenu du fichier au client2");
+				perror("Problème lors de l'envoi de la taille du contenu du fichier au client2");
 				exit(1);
 			} else if(res == 0){
-				perror("Socket fermé");
+				perror("soket fermée");
 				exit(1);
 			}
 
 			res = send(client2, &contenuFichier, tailleContenu,0);
 
 			if(res < 0){
-				perror("Problème lors de l'envoie du contenu du fichier au client2");
+				perror("Problème lors de l'envoi du contenu du fichier au client2");
 				exit(1);
 			} else if(res == 0){
-				perror("Socket fermé");
+				perror("soket fermée");
 				exit(1);
 			}
 }
@@ -185,7 +192,7 @@ void *C2ToC1() {
 }
 
 
-int main(){
+void *salon(){
 
   /*creation socket*/
 
@@ -265,6 +272,81 @@ int main(){
   if (c != 0){
     perror("Erreur fermeture socket");
   }
+}
+
+int main(int argc, char const *argv[])
+{
+	  /*creation socket*/
+
+	int dS = socket(PF_INET, SOCK_STREAM , 0);  /* creation socket, IPv4, protocole TCP */
+  if (dS<0){
+    perror("Erreur creation de socket");
+  }
+	struct sockaddr_in ad;
+	ad.sin_family = AF_INET;
+  ad.sin_addr.s_addr = INADDR_ANY;
+	ad.sin_port = htons(portServer); /*port*/
+
+  int b = bind(dS, (struct sockaddr*)&ad, sizeof(ad));
+  if (b!=0){
+    perror("Erreur de nommage socket \n");
+  }
+  int l = listen(dS,7);
+  if (l != 0){
+      perror("Erreur de listening \n");
+    }
+
+  struct sockaddr_in aC ;
+  socklen_t lg = sizeof(struct sockaddr_in) ;
+
+  while(1){
+
+	    /*connexion client*/
+	    cl = accept(dS, (struct sockaddr*) &aC,&lg);
+	    if (cl < 0){
+	      perror("Erreur, client non accepte");
+	    }
+	    printf("Client connecte \n");
+	    sprintf(message, "Bienvenue client ! \n");
+	    s = send(cl, message, taille, 0);
+	    if (s<0){
+	      perror("Erreur de transmission \n");
+	    }
+
+	    //envoi liste salon
+	    s=send(cl,listSaloon,sizeof(listSaloon)+1,0);
+	    if (s<0){
+	      perror("Erreur de transmission \n");
+	    }
+
+	    //reception du choix
+	    bzero(message,taille);
+	    s=recv(cl,message,taille,0);
+	    if (s < 0){
+	      perror("Erreur reception client 2");
+	    }
+
+	    if(atoi(message)>0 && atoi(message)<4){
+	    	port+=(atoi(message));
+	    	if (index[atoi(message)+1]==0){
+	    		index[atoi(message)+1]+=1;
+	    		bzero(message,taille);
+	    		sprintf(message,"%d",port);
+	    		send(cl,&message,taille,0);
+	    		pthread_t saloon;
+	    		pthread_create(&saloon,0,saloon,*port);
+	    		pthread_join(saloon,0);
+	    	}
+	    	else if (index[atoi(message)+1]==1)
+	    	{
+	    		index[atoi(message)+1]+=1;
+	    		bzero(message,taille);
+	    		sprintf(message,"%d",port);
+	    		send(cl,&message,taille,0);
+	       	}	
+	    }
+
+	}
 
 	return 0;
 }
