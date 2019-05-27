@@ -9,15 +9,22 @@
 #include <pthread.h>
 #include <signal.h>
 #include <dirent.h>
+#include <limits.h>
 #include <errno.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/sendfile.h>
+
 
 #define taille 256 /*taille choisit abritrairement*/
 #define port 10400
 
 int dS;
 int res;
+
+
+// TRANSFERT DE MESSAGE //
 
 
 void *receivMessage() {
@@ -116,6 +123,9 @@ void *receivMessage() {
   }
 }
 
+
+
+
 void *sendMessage() {
 
 	char* sender = (char*) malloc(taille * sizeof(char));
@@ -212,6 +222,10 @@ void *sendMessage() {
   }
 }
 
+
+// MAIN //
+
+
 void handler() {
   int c = close(dS);
   if (c != 0){
@@ -222,6 +236,8 @@ void handler() {
     exit(0);
   }
 }
+
+
 
 int main(int argc, char const *argv[]){
 
@@ -246,12 +262,59 @@ int main(int argc, char const *argv[]){
   } else {
     printf("/////// success creating client ///////\n");
   }
-  
+
   socklen_t lgA = sizeof(struct sockaddr_in);
   res = connect(dS, (struct sockaddr *) &adServ, lgA); /*demande de connexion au serveur*/
   if (res!=0) {
     printf("error connecting to server \n");
     return 0;
+  }
+
+  int sizeSaloon;
+  char choice[2] = {0};
+  char Saloons [taille];
+  int numClient;
+
+  res = recv(dS, &sizeSaloon, sizeof(int), 0);
+  if(res <= 0) {
+    printf("erreur : reception des la taille des sallons impossible !");
+    return 0;
+  }
+
+  res = recv(dS, &Saloons, sizeSaloon, 0);
+  if(res <= 0) {
+    printf("erreur : reception des differents sallons impossible !");
+    return 0;
+  }
+
+  Saloons[sizeSaloon] = '\0';
+
+  printf("Selectionez un salon disponible parmi la liste suivante :\n %s \n", Saloons);
+  fgets(choice, sizeof(int) ,stdin);
+
+  res = send(dS, &choice, sizeof(int), 0);
+  if(res <= 0) {
+    printf("erreur : envoie impossible de votre choix au serveur !");
+    return 0;
+  }
+
+  res =recv(dS, &numClient, sizeof(int), 0);
+  if(res <= 0) {
+    printf("erreur : reception de l'id client impossible !\n");
+    return 0;
+  }
+
+  if(numClient == 1){
+    printf("Bienvenue dans le salon.\n");
+    printf("En attente de chatter\n");
+    char msg[taille];
+    res = recv(dS, &msg, taille,0);
+    if(res <= 0) {
+    printf("erreur : Il pas d'autre chatter dans ce salon !");
+    return 0;
+    } else {
+      printf("%s\n", msg);
+    }
   }
 
 

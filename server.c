@@ -7,27 +7,36 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <pthread.h>
+#include "struct.h"
 
 #define taille 256 /*taille choisie abritrairement ici*/
-#define portServer 10400
+#define NbSalon 4
+#define port 10400
 #define id1 0
 #define id2 1
 
-int cl;
+struct thread_args{
+	int numSalon;
+	int socketServer;
+	int socketClient1;
+	int socketClient2;
+};
+
+struct salon{
+	int numSalon;
+	int nbClientConnecte;
+	int socketClient1;
+	int socketClient2;
+};
+
+struct salon salons[NbSalon];
+
 int cl1;
 int cl2;
 int s;
-char message[taille];
-char *listSaloon[]={
-	"1 : projetWeb",
-	"2 : PLS",
-	"3 : pinou",
-	"4 : deconnexion"
-};
-int port=20400;
-int NumSaloon[3]={0,0,0};
+struct message msg;
 
-int end(char* message){
+/*int end(char* message){
   int fin=strcmp("fin", message);
   if (fin==0){
     return 1;
@@ -35,129 +44,42 @@ int end(char* message){
     return 0;
   }
 
-}
-
-void TransfertFichier(int client1, int client2){
-      int res;
-      int tailleNom;
-			int tailleContenu;
-			char nomFichier[taille];
-			char contenuFichier[taille];
-			printf("Prêt à recevoir un ficher...\n");
-
-			res = recv(client1, &tailleNom, sizeof(int),0); /* Réception de la taille du nom du fichier */
-
-			if(res < 0){
-				perror("Problème lors de la réception de la taille du nom du fichier");
-				exit(1);
-			} else if(res == 0){
-				perror("soket fermée");
-				exit(1);
-			}
-
-			res = recv(client1, &nomFichier, tailleNom,0); /* Réception du nom du fichier */
-
-			if(res < 0){
-				perror("Problème lors de la réception du nom du fichier");
-				exit(1);
-			} else if(res == 0){
-				perror("soket fermée");
-				exit(1);
-			}
-
-			nomFichier[tailleNom] = '\0';
-
-			printf("Nom du fichier : %s\n", nomFichier); /* Affichage du nom du fichier */
-
-			res = send(client2, &tailleNom, sizeof(int),0);
-
-			if(res < 0){
-				perror("Problème lors de l'envoi de la taille du nom du fichier au client2");
-				exit(1);
-			} else if(res == 0){
-				perror("soket fermée");
-				exit(1);
-			}
-
-			res = send(client2, &nomFichier, tailleNom,0);
-
-			if(res < 0){
-				perror("Problème lors de l'envoi du nom du fichier au client2");
-				exit(1);
-			} else if(res == 0){
-				perror("soket fermée");
-				exit(1);
-			}
-
-			res = recv(client1, &tailleContenu, sizeof(int),0); /* Réception de la taille du contenu du fichier */
-
-			if(res < 0){
-				perror("Problème lors de la réception de la taille du contenu du fichier");
-				exit(1);
-			} else if(res == 0){
-				perror("soket fermée");
-				exit(1);
-			}
-
-			res = recv(client1, &contenuFichier, tailleContenu,0); /* Réception du contenu du fichier */
-
-			if(res < 0){
-				perror("Problème lors de la réception du contenu du fichier");
-				exit(1);
-			} else if(res == 0){
-				perror("soket fermée");
-				exit(1);
-			}
-
-			contenuFichier[tailleContenu] = '\0';
-
-			printf("Contenu du fichier : %s\n", contenuFichier); /* Affichage du nom du fichier */
-
-			res = send(client2, &tailleContenu, sizeof(int),0);
-
-			if(res < 0){
-				perror("Problème lors de l'envoi de la taille du contenu du fichier au client2");
-				exit(1);
-			} else if(res == 0){
-				perror("soket fermée");
-				exit(1);
-			}
-
-			res = send(client2, &contenuFichier, tailleContenu,0);
-
-			if(res < 0){
-				perror("Problème lors de l'envoi du contenu du fichier au client2");
-				exit(1);
-			} else if(res == 0){
-				perror("soket fermée");
-				exit(1);
-			}
-}
-
+}*/
 
 void *C1ToC2() {
 
   int end_tchat=0;
-  while(!end_tchat){
+  struct message the_message; 
+  while(1){
 
-    bzero(message, taille);
+    if(!end_tchat){
+      //on receptionne le mssg du client 2
+      int r = recv(cl2,&the_message,sizeof(the_message)+1,0); 
+      if (r < 0){
+        printf("Erreur reception client 2");
+      }
 
-    int r = recv(cl1,message,taille,0);
-    if (r < 0){
-      perror("Erreur reception client 1");
+      //on va le renvoyer au client 1
+      struct message msg_send;
+      msg_send.etiquette = the_message.etiquette;
+      if (strcmp(the_message.contenu, "file\n")==0){
+        msg_send.etiquette=1;
+      }
+    
+      r = send(cl1,&msg_send,sizeof(msg_send)+1,0);
+      if (r < 0){
+        printf("Erreur envoi client 1");
+      }
+
+      if (strcmp(the_message.contenu,"fin\n")==0){
+        end_tchat=1;
+        printf("client 1 a fermé le tchat");
+      }
     }
-    r = send(cl2,message,strlen(message),0);
-    if (r < 0){
-      perror("Erreur envoi client 2");
-    }
-
+    
     //si fin du tchat
-
-    if(end(message)){
-      end_tchat=1;
-    }
-    if(strcmp(message, "file")== 0){
-       TransfertFichier(cl1, cl2);
+    else{
+      break;
     }
   }
 
@@ -166,40 +88,51 @@ void *C1ToC2() {
 
 
 void *C2ToC1() {
-
   int end_tchat=0;
-  while(!end_tchat){
+  struct message the_message; 
+  while(1){
 
-    bzero(message, taille);
+    if(!end_tchat){
+      //on receptionne le mssg du client 1
 
-    int s = recv(cl2,message,taille,0);
-    if (s < 0){
-      perror("Erreur reception client 2");
+      printf("%d", cl1);
+      int r = recv(cl1,&the_message,sizeof(the_message)+1,0); 
+      if (r < 0){
+        printf("Erreur reception client 1");
+      }
+
+      //on va le renvoyer au client 2
+      struct message msg_send;
+      msg_send.etiquette = the_message.etiquette;
+      if (strcmp(the_message.contenu, "file\n")==0){
+        msg_send.etiquette=1;
+      }
+    
+      r = send(cl2,&msg_send,sizeof(msg_send)+1,0);
+      if (r < 0){
+        printf("Erreur envoi client 2");
+      }
+
+      if (strcmp(the_message.contenu,"fin\n")==0){
+        end_tchat=1;
+        printf("client 2 a fermé le tchat");
+      }
     }
-    s = send(cl1,message,strlen(message),0);
-    if (s < 0){
-      perror("Erreur envoi client 1");
-    }
-
+    
     //si fin du tchat
-
-    if(end(message)){
-      end_tchat=1;
-    }
-    if(strcmp(message, "file")== 0){
-       TransfertFichier(cl2, cl1);
+    else{
+      break;
     }
   }
 }
 
 
-void *salon(){
+int main(){
 
   /*creation socket*/
-
 	int dS = socket(PF_INET, SOCK_STREAM , 0);  /* creation socket, IPv4, protocole TCP */
   if (dS<0){
-    perror("Erreur creation de socket");
+    printf("Erreur creation de socket");
   }
 	struct sockaddr_in ad;
 	ad.sin_family = AF_INET;
@@ -215,169 +148,145 @@ void *salon(){
       perror("Erreur de listening \n");
     }
 
-  struct sockaddr_in aC ;
-  socklen_t lg = sizeof(struct sockaddr_in) ;
+  struct sockaddr_in aC1 ;
+  socklen_t lg1 = sizeof(struct sockaddr_in) ;
 
-  while(1){
+  struct sockaddr_in aC2 ;
+  socklen_t lg2 = sizeof(struct sockaddr_in) ;
 
-    /*connexion client 1*/
-    cl1 = accept(dS, (struct sockaddr*) &aC,&lg);
-    if (cl1 < 0){
-      perror("Erreur, client 1 non accepte");
-    }
-    printf("Client 1 connecte \n");
-    sprintf(message, "Bienvenue client 1 ! \n");
-    s = send(cl1, message, taille, 0);
-    if (s<0){
-      perror("Erreur de transmission \n");
-    }
 
-    /*conexion client 2*/
-
-    cl2 = accept(dS, (struct sockaddr*) &aC,&lg);
-    if (cl2 < 0){
-      perror("Erreur, client 1 non accepte");
-    }
-    printf("Client 2 connecté \n");
-    sprintf(message, "Bienvenue client 2 ! \n");
-    s=send(cl2, message, taille, 0);
-    if (s<0){
-      perror("Erreur de transmission \n");
-    }
-
-    sprintf(message,"> Client 2 connecte, debut du tchat \n");
-    send(cl1, message, taille, 0);
-
-    // Debut du tchat avec les threads
-    pthread_t tC1ToC2;
-    pthread_t tC2ToC1;
-
-    pthread_create(&tC1ToC2,0,C1ToC2,0);
-    pthread_create(&tC2ToC1,0,C2ToC1,0);
-
-    pthread_join(tC1ToC2,0);
-    pthread_join(tC2ToC1,0);
-
-    //fermeture socket client
-    printf("/////// Fin du tchat /////// \n");
-    close(cl1);
-    close(cl2);
-
-    // Tchat termine, recommence une boucle pour trouver des clients
-
-    printf("En attente de connexion \n");
-
-  }
-
+  for (int i = 0; i < NbSalon; i++){
+		salons[i].numSalon = i;
+		salons[i].nbClientConnecte = 0;
 }
 
-int main(int argc, char const *argv[])
-{
-	  /*creation socket*/
-
-	int dS = socket(PF_INET, SOCK_STREAM , 0);  /* creation socket, IPv4, protocole TCP */
-  if (dS<0){
-    perror("Erreur creation de socket");
-  }
-	struct sockaddr_in ad;
-	ad.sin_family = AF_INET;
-  ad.sin_addr.s_addr = INADDR_ANY;
-	ad.sin_port = htons(portServer); /*port*/
-
-  int b = bind(dS, (struct sockaddr*)&ad, sizeof(ad));
-  if (b!=0){
-    perror("Erreur de nommage socket \n");
-  }
-  int l = listen(dS,7);
-  if (l != 0){
-      perror("Erreur de listening \n");
-    }
-
-  struct sockaddr_in aC ;
-  socklen_t lg = sizeof(struct sockaddr_in) ;
-
   while(1){
 
-	    /*connexion client*/
-	    cl = accept(dS, (struct sockaddr*) &aC,&lg);
-	    if (cl < 0){
-	      perror("Erreur, client non accepte");
-	    }
-	    printf("Client connecte \n");
-	    sprintf(message, "Bienvenue client ! \n");
-	    s = send(cl, message, taille, 0);
-	    if (s<0){
-	      perror("Erreur de transmission \n");
-	    }
+    char salonChoisitChar[2] = "";
+		char salonDispo[taille] = "";
+		for (int i = 0; i < NbSalon; i++){
+			char message1[] = "Salon ";
+			char message2[] = "";
+			char message3[] = ", place disponible : ";
+			char message4[] = "";
+			sprintf(message2, "%d", i);
+			int placeDispo = 2-salons[i].nbClientConnecte;
+			sprintf(message4, "%d", placeDispo);
 
-			// Nouveau client ou nom de l'ancien salon
-			res = recv(dS,receiv,taille,0);
-	    if (res<0) {
-	      printf("Erreur reception client \n");
-	    }
-	    printf("Le client quitte le salon %s\n",receiv);
-	    int new=strcmp("new\0", receiv);
-	    if (new!=0){
-				NumSaloon[atoi(receiv)+1]-=1;
-	    }
+			strcat(salonDispo,message1);
+			strcat(salonDispo,message2);
+			strcat(salonDispo,message3);
+			strcat(salonDispo,message4);
+			strcat(salonDispo,"\n");
+    }
 
-	    //envoi liste salon
+    int tailleSalonDispo = strlen(salonDispo);
+		
+		int dSocketClient = accept(dS, (struct sockaddr*)&aC1, &lg1);
 
-			// <!> Envoi du nombre de clients present dans chaque salon
-	    s=send(cl,listSaloon,sizeof(listSaloon)+1,0);
-	    if (s<0){
-	      perror("Erreur de transmission \n");
-	    }
+		if(dSocketClient < 0){
+			printf("erreur : impossible de créer le socket client1");
+			return 1;
+    }
 
-			while (1) {
-				//reception du choix
-		    bzero(message,taille);
-		    s=recv(cl,message,taille,0);
-		    if (s < 0){
-		      perror("Erreur reception client 2");
-		    }
+    int res = send(dSocketClient, &tailleSalonDispo, sizeof(int),0);
+    if(res <= 0) {
+    printf("erreur : impossible d'envoyer le nombre de salon disponible !");
+    return 0;
+    }
 
-		    if(atoi(message)>0 && atoi(message)<4){
-		    	port+=(atoi(message));
-		    	if (NumSaloon[atoi(message)+1]==0){
-		    		NumSaloon[atoi(message)+1]+=1;
-		    		bzero(message,taille);
-		    		sprintf(message,"%d",port);
-		    		send(cl,&message,taille,0);
-		    		pthread_t saloon;
-		    		pthread_create(&saloon,0,saloon,port);
-		    		pthread_join(saloon,0);
-						break;
-		    	}
-		    	else if (NumSaloon[atoi(message)+1]==1)
-		    	{
-		    		NumSaloon[atoi(message)+1]+=1;
-		    		bzero(message,taille);
-		    		sprintf(message,"%d",port);
-		    		send(cl,&message,taille,0);
-						break;
-		      }
-					else {
-						bzero(message,taille);
-		    		sprintf(message,"Salon complet");
-						s=send(cl,message,sizeof(message)+1,0);
-						if (s<0){
-							perror("Erreur de transmission \n");
-						}
-					}
-		    }
-				else {
-					close(cl);
-					break;
-				}
-			}
+    res = send(dSocketClient, &salonDispo, tailleSalonDispo,0);
+    if(res <= 0) {
+    printf("erreur : impossible d'envoyer les salons disponible !");
+    return 0;
+    }
 
-	}
+    res = recv(dSocketClient, &salonChoisitChar, taille,0);
+    if(res <= 0) {
+    printf("erreur : reception impossible du salon choisit par le client !");
+    }
 
-	int c = close (dS);
-	if (c != 0){
-		perror("Erreur fermeture socket");
-	}
+    
+
+    int salonChoisit = atoi(salonChoisitChar);
+
+    if(salons[salonChoisit].nbClientConnecte == 0){
+			int numClient = 1;
+			salons[salonChoisit].nbClientConnecte += 1;
+			salons[salonChoisit].socketClient1 = dSocketClient;      
+
+			res = send(dSocketClient, &numClient, sizeof(int),0);
+      if(res <= 0) {
+      printf("erreur : envoie du numero client !");
+      }
+
+      printf("%d", salons[salonChoisit].nbClientConnecte);
+
+			} else if(salons[salonChoisit].nbClientConnecte == 1) {
+
+      int numClient = 2;
+      salons[salonChoisit].nbClientConnecte += 1;
+      salons[salonChoisit].socketClient2 = dSocketClient;
+
+      res = send(dSocketClient, &numClient, sizeof(int),0);
+      if(res <= 0) {
+      printf("erreur : envoi du numero client2");
+      return 0;
+      }
+      
+      char confirm[taille]="client 2 connecte, debut du chat !";
+      res=send(salons[salonChoisit].socketClient1,&confirm, taille, 0);
+      if (s<=0){
+        printf("Erreur de transmission \n");
+      }
+
+      pthread_t threadClient1;
+			struct thread_args argsClient1;
+			argsClient1.numSalon = salonChoisit;
+			argsClient1.socketServer = dS;
+			argsClient1.socketClient1 = salons[salonChoisit].socketClient1;
+			argsClient1.socketClient2 = salons[salonChoisit].socketClient2;
+			pthread_create(&threadClient1, 0, C1ToC2, &argsClient1);
+
+			pthread_t threadClient2;
+			struct thread_args argsClient2;
+			argsClient2.numSalon = salonChoisit;
+			argsClient2.socketServer = dS;
+			argsClient2.socketClient1 = salons[salonChoisit].socketClient2;
+			argsClient2.socketClient2 = salons[salonChoisit].socketClient1;
+      pthread_create(&threadClient2, 0, C2ToC1, &argsClient2);
+
+      pthread_join(threadClient1, 0);
+      pthread_join(threadClient2, 0);
+
+      }
+
+      // Debut du tchat avec les threads
+      /*pthread_t tC1ToC2;
+      pthread_t tC2ToC1;
+
+      pthread_create(&tC1ToC2,0,C1ToC2,0);
+      pthread_create(&tC2ToC1,0,C2ToC1,0);
+
+      pthread_join(tC1ToC2,0);
+      pthread_join(tC2ToC1,0);
+
+      //fermeture socket client
+      printf("/////// Fin du tchat /////// \n");
+      close(cl1);
+      close(cl2);
+
+      // Tchat termine, recommence une boucle pour trouver des clients
+
+      printf("En attente de connexion \n");*/
+
+    }
+
+    int c = close (dS);
+    if (c != 0){
+      perror("Erreur fermeture socket");
+    }
 
 	return 0;
+
 }
